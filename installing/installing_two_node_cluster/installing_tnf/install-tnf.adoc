@@ -17,7 +17,7 @@ Agent-Based Infrastructure:: You use a bootable ISO image containing an agent th
 
 [IMPORTANT]
 ====
-Configure node access during installation, for example, by including SSH keys in the `install-config.yaml` file. TNF clusters might require manual intervention in specific error scenarios that can only be resolved through direct node access.
+Configure SSH access to the control plane nodes during installation, for example, by including SSH keys in the `install-config.yaml` file. Unlike standard {product-title} clusters, where node login is rarely needed, a two-node cluster with fencing requires direct node access for ongoing maintenance and troubleshooting. Some error scenarios can be resolved only by logging in to a node, so plan for SSH access before you deploy the cluster.
 ====
 
 include::modules/sample-install-config-two-node-fencing-ipi.adoc[leveloffset=+1]
