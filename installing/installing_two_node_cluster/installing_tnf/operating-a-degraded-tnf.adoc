@@ -16,6 +16,11 @@ Degraded operation is an intentional design state rather than a system failure. 
 A degraded cluster has zero fault tolerance. If the surviving node also fails, the cluster fails. Restore the second node as soon as possible. Degraded operation is a temporary recovery window, not a long-term steady state.
 ====
 
+[NOTE]
+====
+Recovering a degraded cluster requires SSH access to the surviving control plane node.
+====
+
 include::modules/tnf-cluster-degradation-causes.adoc[leveloffset=+1]
 
 include::modules/node-failure-sequence-in-a-tnf-cluster.adoc[leveloffset=+1]
