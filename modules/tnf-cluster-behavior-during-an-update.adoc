@@ -47,12 +47,8 @@ Each node is unavailable for workloads from the time it is cordoned until it is 
 | Within minutes
 
 | Fencing
-| Does not occur during a normal update.
-| Not applicable
+| Does not occur during a normal update. If Pacemaker fences a node while the MCO applies the operating system image, Pacemaker and etcd recover on their own, but the update stops until you resume it. See "Recovering an update interrupted by fencing".
+| Requires action
 |===
-
-// TO MEASURE (fencing-injection run, OCPEDGE-3054): fencing completion time when a node is fenced during the update,
-// whether the update resumes on its own, and dual power-on re-form. Add a paragraph on fencing during an update only
-// if the run shows behavior that requires customer action.
 
 If a node stays `NotReady`, or a cluster Operator stays `Degraded`, after the update otherwise completes, gather diagnostic information before you take any recovery action.

@@ -20,6 +20,8 @@ include::modules/tnf-cluster-behavior-during-an-update.adoc[leveloffset=+1]
 
 include::modules/tnf-monitoring-an-update.adoc[leveloffset=+1]
 
+include::modules/tnf-recovering-an-update-interrupted-by-fencing.adoc[leveloffset=+1]
+
 [role="_additional-resources"]
 [id="additional-resources_{context}"]
 == Additional resources
@@ -29,3 +31,5 @@ include::modules/tnf-monitoring-an-update.adoc[leveloffset=+1]
 * xref:../../../updating/updating_a_cluster/updating-cluster-web-console.adoc#updating-cluster-web-console[Updating a cluster using the web console]
 * xref:../installing_tnf/operating-a-degraded-tnf.adoc#prohibited-operations-during-degraded-tnf-operation_operating-a-degraded-tnf[Prohibited operations during degraded TNF operation]
 * xref:../installing_tnf/operating-a-degraded-tnf.adoc#verifying-tnf-cluster-state_operating-a-degraded-tnf[Verifying TNF cluster state]
+* xref:../../../machine_configuration/index.adoc#machine-config-drift-detection_machine-config-overview[Understanding configuration drift detection]
+* link:https://access.redhat.com/solutions/5414371[How to skip validation of failing / stuck MachineConfig in OCP 4? (Red{nbsp}Hat Knowledgebase article)]

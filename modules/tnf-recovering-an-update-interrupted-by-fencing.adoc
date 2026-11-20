@@ -1,0 +1,176 @@
+// Module included in the following assemblies:
+// * installing_tnf/updating-tnf.adoc
+
+:_mod-docs-content-type: PROCEDURE
+[id="tnf-recovering-an-update-interrupted-by-fencing_{context}"]
+= Recovering an update interrupted by fencing
+
+[role="_abstract"]
+If Pacemaker fences a control plane node while the Machine Config Operator (MCO) applies the new operating system image, the node can restart on its previous image and the update stops. Pacemaker and etcd recover on their own, but the Machine Config Daemon (MCD) on the fenced node reports a degraded state until you instruct it to apply the update again.
+
+// Source: OCPEDGE-3054 fencing-injection run, 4.22.22 -> 5.0.1, fence ~40 s after OSUpdateStarted.
+// The MCD writes the new config files before the rpm-ostree apply; after the fence the node booted the old
+// deployment, MCD validated against currentConfig and found the new files. No self-heal after 10 min.
+// MCO review (2026-11-20): applying desiredConfig with the force file during an outstanding update is
+// intentional; tracked as OCPBUGS-143965 (precedent OCPBUGS-58092). Late-fence states (OS staged or
+// on-disk currentconfig already updated) are NOT validated: keep them outside this procedure.
+// Example outputs for the stuck state are from the run; on-disk currentconfig was not captured during the
+// stuck state, the value shown is inferred from the MCD startup log ("Current config: rendered-master-be6029cc...").
+
+When the fenced node restarts, the cluster goes through the following stages:
+
+. Pacemaker on the other node recovers etcd as a single-member cluster, and the fenced node rejoins etcd and the Pacemaker cluster. The Kubernetes API can be unresponsive for several minutes during this recovery, even when the `/readyz` endpoint reports the API as ready.
+. The `PacemakerCluster` resource returns to `Healthy=True`.
+. The MCD on the fenced node finds files from the new machine config on a node that still runs the previous image. The MCD treats this as configuration drift and reports an `unexpected on-disk state` error. The node stays cordoned, the `master` machine config pool reports `Degraded=True`, and the update does not progress.
+
+You resume the update by generating a force file on the fenced node, the same remediation that is used for configuration drift. When the desired machine config of the node differs from its current machine config, the force file causes the MCD to apply the desired machine config.
+
+[IMPORTANT]
+====
+This procedure applies only when the fenced node runs its previous operating system image and the MCD reports a file content mismatch. If the node state differs from the state described in this procedure, do not generate a force file. Gather diagnostic data and contact Red{nbsp}Hat Support.
+====
+
+.Prerequisites
+
+* You have access to the cluster as a user with the `cluster-admin` role.
+* You installed the OpenShift CLI (`oc`).
+
+.Procedure
+
+. Confirm that Pacemaker fenced the node during the update. Run the following command on the node that was not fenced:
++
+[source,terminal]
+----
+$ oc debug node/<surviving_node> -- chroot /host pcs stonith history
+----
++
+.Example output
+[source,terminal]
+----
+reboot of master-1 successful: delegate=master-0, client=stonith_admin.470434, origin=master-0, completed='2026-11-20 15:14:26.049617Z'
+1 event found
+----
+
+. Check the MCD state of the fenced node:
++
+[source,terminal]
+----
+$ oc get node <fenced_node> -o jsonpath='{.metadata.annotations.machineconfiguration\.openshift\.io/state}{"\n"}{.metadata.annotations.machineconfiguration\.openshift\.io/currentConfig}{"\n"}{.metadata.annotations.machineconfiguration\.openshift\.io/desiredConfig}{"\n"}{.metadata.annotations.machineconfiguration\.openshift\.io/reason}{"\n"}'
+----
++
+.Example output
+[source,terminal]
+----
+Degraded
+rendered-master-be6029cce270489ed72ed64fac7e02be
+rendered-master-3e9eab5d96e54322c54a90977f9b8caf
+unexpected on-disk state validating against rendered-master-be6029cce270489ed72ed64fac7e02be: content mismatch for file "/etc/NetworkManager/dispatcher.d/30-resolv-prepender"
+----
++
+The output lists the MCD state, the current machine config, the desired machine config, and the reason for the state. If the state is `Working`, the MCD is still applying the update. Wait and check again.
+
+. Check the machine config that the node recorded on disk:
++
+[source,terminal]
+----
+$ oc debug node/<fenced_node> -- chroot /host jq -r '.metadata.name' /etc/machine-config-daemon/currentconfig
+----
++
+.Example output
+[source,terminal]
+----
+rendered-master-be6029cce270489ed72ed64fac7e02be
+----
+
+. Check the operating system image that the node booted:
++
+[source,terminal]
+----
+$ oc debug node/<fenced_node> -- chroot /host rpm-ostree status --booted
+----
++
+.Example output
+[source,terminal]
+----
+State: idle
+BootedDeployment:
+* ostree-unverified-registry:quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:43f5fc72c04091c7f85d4e1e1f9e75e78d1c57b7ca794d33a90d13c149a8bd35
+                   Digest: sha256:43f5fc72c04091c7f85d4e1e1f9e75e78d1c57b7ca794d33a90d13c149a8bd35
+                  Version: 9.8.20261103-0 (2026-11-03T23:56:44Z)
+----
+
+. Check the operating system image of the current machine config:
++
+[source,terminal]
+----
+$ oc get mc <current_config> -o jsonpath='{.spec.osImageURL}{"\n"}'
+----
++
+where `<current_config>` is the current machine config from the node annotations.
++
+.Example output
+[source,terminal]
+----
+quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:43f5fc72c04091c7f85d4e1e1f9e75e78d1c57b7ca794d33a90d13c149a8bd35
+----
+
+. Continue with this procedure only if all of the following conditions are true:
++
+* The MCD state is `Degraded`, and the reason is `unexpected on-disk state` with a `content mismatch for file` message.
+* The current machine config and the desired machine config in the node annotations differ.
+* The machine config recorded on disk matches the current machine config in the node annotations.
+* The booted operating system image matches the image of the current machine config.
++
+If any condition is false, for example if the node booted the new image, or the reason reports an operating system or kernel argument mismatch, do not continue. Gather diagnostic data and contact Red{nbsp}Hat Support.
+
+. Confirm that the Pacemaker cluster recovered before you resume the update:
++
+.. Check the conditions of the `PacemakerCluster` resource:
++
+[source,terminal]
+----
+$ oc get pacemakercluster cluster -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}'
+----
++
+.Example output
+[source,terminal]
+----
+NodeCountAsExpected=True
+InService=True
+Healthy=True
+----
++
+.. Check that both nodes are online and that etcd runs on both nodes:
++
+[source,terminal]
+----
+$ oc debug node/<surviving_node> -- chroot /host pcs status
+----
++
+If a condition is not `True`, or a node is not online, do not continue. Resolving the Pacemaker cluster state takes precedence over the update.
+
+. Generate a force file on the fenced node so that the MCD skips the configuration drift check and applies the desired machine config:
++
+[source,terminal]
+----
+$ oc debug node/<fenced_node> -- chroot /host touch /run/machine-config-daemon-force
+----
++
+The MCD applies the new operating system image and restarts the node. Pacemaker handles this restart as a normal update restart, without fencing. The MCD removes the file after it uses it.
+
+.Verification
+
+. Confirm that the MCD on the fenced node finished the update:
++
+[source,terminal]
+----
+$ oc get node <fenced_node> -o jsonpath='{.metadata.annotations.machineconfiguration\.openshift\.io/state}{"\n"}'
+----
++
+.Example output
+[source,terminal]
+----
+Done
+----
+
+. Continue to monitor the update as described in "Monitoring a TNF update". The MCO uncordons the node and updates the second node.
