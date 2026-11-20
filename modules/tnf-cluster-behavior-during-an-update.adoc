@@ -1,0 +1,58 @@
+// Module included in the following assemblies:
+// * installing_tnf/updating-tnf.adoc
+
+:_mod-docs-content-type: CONCEPT
+[id="tnf-cluster-behavior-during-an-update_{context}"]
+= Cluster behavior during a TNF update
+
+[role="_abstract"]
+A two-node OpenShift cluster with fencing (TNF) updates one control plane node at a time, and Pacemaker keeps the cluster running on the node that is not being updated. Short API interruptions and temporary cluster Operator conditions are expected and resolve on their own.
+
+.Update sequence
+
+. The control plane Operators update first. This phase includes a new etcd static pod revision on both nodes, applied without rebooting either node.
+. The Machine Config Operator (MCO) updates the control plane nodes one at a time. The MCO cordons and drains the node, applies the new operating system image, and reboots the node.
+. Before the node shuts down, Pacemaker moves the fencing resources and the designated coordinator (DC) role to the other node. The other node keeps quorum, so fencing is not triggered.
+. After the node boots, Pacemaker and the kubelet start on it. The TNF setup jobs in the `openshift-etcd` namespace run again: they briefly remove the node from the Pacemaker configuration, add it back, and reapply the fencing configuration. etcd then starts on the node and rejoins the cluster.
+. When the node is `Ready`, the MCO uncordons it and starts on the second node, which goes through the same steps.
+
+Each node is unavailable for workloads from the time it is cordoned until it is uncordoned. Workloads that run on a single replica, or that are pinned to one node, are interrupted during that window.
+
+// Clean run on dev-scripts VMs (4.22 -> 5.0.1): ~11-13 min cordon->uncordon per node, ~64 min total.
+// Not stated as numbers: bare-metal reboots and image pulls are slower. Validate on hardware before adding figures.
+
+.Expected conditions during an update
+[cols="2,3,2",options="header"]
+|===
+| Component | Expected behavior | Resolves
+
+| Kubernetes API server
+| The `/readyz` endpoint returns HTTP `500` for several seconds each time an API server instance restarts: during the API server rollout and when each node reboots. Connections are not refused.
+| Within seconds
+
+| Web console
+| Remains available.
+| Not applicable
+
+| `etcd` cluster Operator
+| `Progressing=True` during etcd static pod rollouts and while a node reboots and rejoins. `Available=False` for a few seconds when a member rejoins.
+| When both members run the new revision
+
+| `PacemakerCluster` resource
+| `Healthy=False` while a node is offline or rejoining. `NodeCountAsExpected=False` while the setup job removes and re-adds the node.
+| When the node rejoins the Pacemaker cluster
+
+| Other cluster Operators
+| `Progressing=True` or `Degraded=True` for a short time, for example `authentication`, `console`, `openshift-apiserver`. Operators with a single replica, such as `image-registry`, report `Available=False` while their node drains.
+| Within minutes
+
+| Fencing
+| Does not occur during a normal update.
+| Not applicable
+|===
+
+// TO MEASURE (fencing-injection run, OCPEDGE-3054): fencing completion time when a node is fenced during the update,
+// whether the update resumes on its own, and dual power-on re-form. Add a paragraph on fencing during an update only
+// if the run shows behavior that requires customer action.
+
+If a node stays `NotReady`, or a cluster Operator stays `Degraded`, after the update otherwise completes, gather diagnostic information before you take any recovery action.
