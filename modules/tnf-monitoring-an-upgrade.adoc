@@ -1,0 +1,148 @@
+// Module included in the following assemblies:
+// * installing_tnf/operating-a-degraded-tnf.adoc
+
+:_mod-docs-content-type: PROCEDURE
+[id="tnf-monitoring-an-upgrade_{context}"]
+= Monitoring the progress of a TNF upgrade
+
+[role="_abstract"]
+Track the upgrade of a two-node OpenShift cluster with fencing (TNF) from the cluster API, and confirm on a control plane node that the Pacemaker cluster recovers after each node reboots.
+
+.Prerequisites
+
+* You have access to the cluster as a user with the `cluster-admin` role.
+* You have SSH access to both control plane nodes.
+* You started the upgrade while both nodes were healthy.
+
+.Procedure
+
+. Check the overall upgrade progress:
++
+[source,terminal]
+----
+$ oc get clusterversion
+----
++
+The `PROGRESSING` column stays `True` until the upgrade completes. The status message shows which cluster Operators the upgrade is waiting on.
+
+. Check which control plane node the MCO is updating:
++
+[source,terminal]
+----
+$ oc get mcp master
+----
++
+[source,terminal]
+----
+$ oc get nodes
+----
++
+The node that is being updated shows `SchedulingDisabled`, and `NotReady` while it reboots. Only one node is updated at a time.
+
+. Check the conditions of the `PacemakerCluster` resource:
++
+[source,terminal]
+----
+$ oc get pacemakercluster cluster -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}'
+----
++
+.Example output while a node reboots
+[source,terminal]
+----
+NodeCountAsExpected=True
+InService=True
+Healthy=False
+----
++
+`Healthy=False` is expected while a node is offline. It returns to `True` after the node rejoins.
+
+. From the node that is not being updated, check the Pacemaker cluster status:
++
+[source,terminal]
+----
+$ sudo pcs status
+----
++
+While the other node reboots, the output shows that node as `OFFLINE`, the remaining node as the DC with quorum, and both fencing devices started on the remaining node:
++
+.Example output
+[source,terminal]
+----
+  * Current DC: master-0 (version 2.1.10-3.el9_8-5693eaeee) - partition with quorum
+  * Online: [ master-0 ]
+  * OFFLINE: [ master-1 ]
+  * master-0_redfish	(stonith:fence_redfish):	 Started master-0
+  * master-1_redfish	(stonith:fence_redfish):	 Started master-0
+----
++
+The fencing devices do not move back after the rebooted node rejoins. This is expected.
+
+.Verification
+
+. Confirm that the upgrade completed:
++
+[source,terminal]
+----
+$ oc get clusterversion
+----
++
+The `VERSION` column shows the new version, and `PROGRESSING` is `False`.
+
+. Confirm that both nodes are updated and ready:
++
+[source,terminal]
+----
+$ oc get mcp master
+----
++
+.Example output
+[source,terminal]
+----
+NAME     CONFIG                                             UPDATED   UPDATING   DEGRADED   MACHINECOUNT   READYMACHINECOUNT   UPDATEDMACHINECOUNT   DEGRADEDMACHINECOUNT   AGE
+master   rendered-master-0eb2c12ced877a543900f4fc78df9ab3   True      False      False      2              2                   2                     0                      47h
+----
+
+. Confirm that the `PacemakerCluster` resource reports all conditions as `True`:
++
+[source,terminal]
+----
+$ oc get pacemakercluster cluster -o jsonpath='{range .status.conditions[*]}{.type}={.status}{"\n"}{end}'
+----
++
+.Example output
+[source,terminal]
+----
+NodeCountAsExpected=True
+InService=True
+Healthy=True
+----
+
+. On either node, confirm that both nodes are online and that the `kubelet` and `etcd` resources are started on both nodes:
++
+[source,terminal]
+----
+$ sudo pcs status
+----
++
+.Example output
+[source,terminal]
+----
+Node List:
+  * Node master-0 (1): online, feature set 3.19.6
+  * Node master-1 (2): online, feature set 3.19.6
+
+Full List of Resources:
+  * Clone Set: kubelet-clone [kubelet]:
+    * kubelet	(systemd:kubelet):	 Started master-1
+    * kubelet	(systemd:kubelet):	 Started master-0
+  * master-0_redfish	(stonith:fence_redfish):	 Started master-1
+  * master-1_redfish	(stonith:fence_redfish):	 Started master-1
+  * Clone Set: etcd-clone [etcd]:
+    * etcd	(ocf:heartbeat:podman-etcd):	 Started master-1
+    * etcd	(ocf:heartbeat:podman-etcd):	 Started master-0
+----
++
+[NOTE]
+====
+After an upgrade, the `pcs status --full` output can show a `force_new_cluster` node attribute on one node. The TNF setup jobs set this attribute as part of normal operation. Do not remove it.
+====
