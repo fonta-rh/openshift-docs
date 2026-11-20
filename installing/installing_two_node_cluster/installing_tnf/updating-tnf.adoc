@@ -1,0 +1,31 @@
+:_mod-docs-content-type: ASSEMBLY
+[id="updating-tnf"]
+= Updating a two-node OpenShift cluster with fencing
+include::_attributes/common-attributes.adoc[]
+:context: updating-tnf
+
+toc::[]
+
+[role="_abstract"]
+You update a two-node {product-title} cluster with fencing (TNF) by using the same channels, methods, and procedures as any other {product-title} cluster. Review the TNF-specific behavior before you start an update, so that you can tell expected transient conditions apart from problems that need action.
+
+For update channels, prerequisites, and the update procedure, see "Introduction to OpenShift updates" and "Updating a cluster using the CLI" or "Updating a cluster using the web console".
+
+[IMPORTANT]
+====
+Start an update only when both control plane nodes are healthy. Do not start an update while the cluster is degraded. For details, see "Prohibited operations during degraded TNF operation".
+====
+
+include::modules/tnf-cluster-behavior-during-an-update.adoc[leveloffset=+1]
+
+include::modules/tnf-monitoring-an-update.adoc[leveloffset=+1]
+
+[role="_additional-resources"]
+[id="additional-resources_{context}"]
+== Additional resources
+
+* xref:../../../updating/understanding_updates/intro-to-updates.adoc#understanding-openshift-updates[Introduction to OpenShift updates]
+* xref:../../../updating/updating_a_cluster/updating-cluster-cli.adoc#updating-cluster-cli[Updating a cluster using the CLI]
+* xref:../../../updating/updating_a_cluster/updating-cluster-web-console.adoc#updating-cluster-web-console[Updating a cluster using the web console]
+* xref:../installing_tnf/operating-a-degraded-tnf.adoc#prohibited-operations-during-degraded-tnf-operation_operating-a-degraded-tnf[Prohibited operations during degraded TNF operation]
+* xref:../installing_tnf/operating-a-degraded-tnf.adoc#verifying-tnf-cluster-state_operating-a-degraded-tnf[Verifying TNF cluster state]

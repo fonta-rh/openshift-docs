@@ -1,5 +1,5 @@
 // Module included in the following assemblies:
-// * installing_tnf/operating-a-degraded-tnf.adoc
+// * installing_tnf/updating-tnf.adoc
 
 :_mod-docs-content-type: PROCEDURE
 [id="tnf-monitoring-an-update_{context}"]
@@ -104,7 +104,3 @@ Healthy=True
 ====
 After an update, the `pcs status --full` output can show a `force_new_cluster` node attribute on one node. The TNF setup jobs set this attribute as part of normal operation. Do not remove it.
 ====
-
-[role="_additional-resources"]
-.Additional resources
-* xref:../installing_tnf/operating-a-degraded-tnf.adoc#verifying-tnf-cluster-state_operating-a-degraded-tnf[Verifying TNF cluster state]

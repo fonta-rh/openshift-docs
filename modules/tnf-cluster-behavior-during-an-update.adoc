@@ -1,19 +1,12 @@
 // Module included in the following assemblies:
-// * installing_tnf/operating-a-degraded-tnf.adoc
+// * installing_tnf/updating-tnf.adoc
 
 :_mod-docs-content-type: CONCEPT
 [id="tnf-cluster-behavior-during-an-update_{context}"]
 = Cluster behavior during a TNF update
 
 [role="_abstract"]
-You update a two-node OpenShift cluster with fencing (TNF) by using the same methods as any other {product-title} cluster. During the update, TNF clusters update one control plane node at a time, and Pacemaker keeps the cluster running on the node that is not being updated. Short API interruptions and temporary cluster Operator conditions are expected and resolve on their own.
-
-For update channels, prerequisites, and the update procedure, see "Introduction to OpenShift updates" and "Updating a cluster using the CLI" or "Updating a cluster using the web console". This section describes only the behavior that is specific to TNF clusters.
-
-[IMPORTANT]
-====
-Start an update only when both nodes are healthy. Do not start an update while the cluster is degraded. For details, see "Prohibited operations during degraded TNF operation".
-====
+A two-node OpenShift cluster with fencing (TNF) updates one control plane node at a time, and Pacemaker keeps the cluster running on the node that is not being updated. Short API interruptions and temporary cluster Operator conditions are expected and resolve on their own.
 
 .Update sequence
 
@@ -63,9 +56,3 @@ Each node is unavailable for workloads from the time it is cordoned until it is 
 // if the run shows behavior that requires customer action.
 
 If a node stays `NotReady`, or a cluster Operator stays `Degraded`, after the update otherwise completes, gather diagnostic information before you take any recovery action.
-
-[role="_additional-resources"]
-.Additional resources
-* xref:../../../updating/understanding_updates/intro-to-updates.adoc#understanding-openshift-updates[Introduction to OpenShift updates]
-* xref:../../../updating/updating_a_cluster/updating-cluster-cli.adoc#updating-cluster-cli[Updating a cluster using the CLI]
-* xref:../../../updating/updating_a_cluster/updating-cluster-web-console.adoc#updating-cluster-web-console[Updating a cluster using the web console]
