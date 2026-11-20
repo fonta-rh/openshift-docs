@@ -30,9 +30,9 @@ include::modules/capabilities-during-degraded-tnf-operation.adoc[leveloffset=+1]
 
 include::modules/prohibited-operations-during-degraded-tnf-operation.adoc[leveloffset=+1]
 
-include::modules/tnf-upgrade-expectations.adoc[leveloffset=+1]
+include::modules/tnf-cluster-behavior-during-an-update.adoc[leveloffset=+1]
 
-include::modules/tnf-monitoring-an-upgrade.adoc[leveloffset=+1]
+include::modules/tnf-monitoring-an-update.adoc[leveloffset=+1]
 
 include::modules/recovering-a-failed-tnf-node.adoc[leveloffset=+1]
 

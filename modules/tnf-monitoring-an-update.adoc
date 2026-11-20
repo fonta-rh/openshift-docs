@@ -2,28 +2,18 @@
 // * installing_tnf/operating-a-degraded-tnf.adoc
 
 :_mod-docs-content-type: PROCEDURE
-[id="tnf-monitoring-an-upgrade_{context}"]
-= Monitoring the progress of a TNF upgrade
+[id="tnf-monitoring-an-update_{context}"]
+= Monitoring a TNF update
 
 [role="_abstract"]
-Track the upgrade of a two-node OpenShift cluster with fencing (TNF) from the cluster API, and confirm on a control plane node that the Pacemaker cluster recovers after each node reboots.
+Track the TNF-specific stages of an update of a two-node OpenShift cluster with fencing (TNF): which control plane node is being updated, and whether the Pacemaker cluster recovers after each node reboots.
 
 .Prerequisites
 
 * You have access to the cluster as a user with the `cluster-admin` role.
-* You have SSH access to both control plane nodes.
-* You started the upgrade while both nodes were healthy.
+* You started the update while both nodes were healthy.
 
 .Procedure
-
-. Check the overall upgrade progress:
-+
-[source,terminal]
-----
-$ oc get clusterversion
-----
-+
-The `PROGRESSING` column stays `True` until the upgrade completes. The status message shows which cluster Operators the upgrade is waiting on.
 
 . Check which control plane node the MCO is updating:
 +
@@ -56,11 +46,11 @@ Healthy=False
 +
 `Healthy=False` is expected while a node is offline. It returns to `True` after the node rejoins.
 
-. From the node that is not being updated, check the Pacemaker cluster status:
+. Check the Pacemaker cluster status from the node that is not being updated:
 +
 [source,terminal]
 ----
-$ sudo pcs status
+$ oc debug node/<node-not-being-updated> -- chroot /host pcs status
 ----
 +
 While the other node reboots, the output shows that node as `OFFLINE`, the remaining node as the DC with quorum, and both fencing devices started on the remaining node:
@@ -79,16 +69,7 @@ The fencing devices do not move back after the rebooted node rejoins. This is ex
 
 .Verification
 
-. Confirm that the upgrade completed:
-+
-[source,terminal]
-----
-$ oc get clusterversion
-----
-+
-The `VERSION` column shows the new version, and `PROGRESSING` is `False`.
-
-. Confirm that both nodes are updated and ready:
+. Confirm that the MCO updated both control plane nodes:
 +
 [source,terminal]
 ----
@@ -117,32 +98,13 @@ InService=True
 Healthy=True
 ----
 
-. On either node, confirm that both nodes are online and that the `kubelet` and `etcd` resources are started on both nodes:
-+
-[source,terminal]
-----
-$ sudo pcs status
-----
-+
-.Example output
-[source,terminal]
-----
-Node List:
-  * Node master-0 (1): online, feature set 3.19.6
-  * Node master-1 (2): online, feature set 3.19.6
-
-Full List of Resources:
-  * Clone Set: kubelet-clone [kubelet]:
-    * kubelet	(systemd:kubelet):	 Started master-1
-    * kubelet	(systemd:kubelet):	 Started master-0
-  * master-0_redfish	(stonith:fence_redfish):	 Started master-1
-  * master-1_redfish	(stonith:fence_redfish):	 Started master-1
-  * Clone Set: etcd-clone [etcd]:
-    * etcd	(ocf:heartbeat:podman-etcd):	 Started master-1
-    * etcd	(ocf:heartbeat:podman-etcd):	 Started master-0
-----
+. Verify the Pacemaker, etcd, node, and cluster Operator state as described in "Verifying TNF cluster state".
 +
 [NOTE]
 ====
-After an upgrade, the `pcs status --full` output can show a `force_new_cluster` node attribute on one node. The TNF setup jobs set this attribute as part of normal operation. Do not remove it.
+After an update, the `pcs status --full` output can show a `force_new_cluster` node attribute on one node. The TNF setup jobs set this attribute as part of normal operation. Do not remove it.
 ====
+
+[role="_additional-resources"]
+.Additional resources
+* xref:../installing_tnf/operating-a-degraded-tnf.adoc#verifying-tnf-cluster-state_operating-a-degraded-tnf[Verifying TNF cluster state]

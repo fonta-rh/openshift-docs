@@ -2,18 +2,20 @@
 // * installing_tnf/operating-a-degraded-tnf.adoc
 
 :_mod-docs-content-type: CONCEPT
-[id="tnf-upgrade-expectations_{context}"]
-= Cluster behavior during a TNF upgrade
+[id="tnf-cluster-behavior-during-an-update_{context}"]
+= Cluster behavior during a TNF update
 
 [role="_abstract"]
-A two-node OpenShift cluster with fencing (TNF) upgrades one control plane node at a time. The node that is not being updated keeps etcd quorum and the Pacemaker cluster running, so the upgrade completes without manual intervention. Short API interruptions and temporary cluster Operator conditions are expected and resolve on their own.
+You update a two-node OpenShift cluster with fencing (TNF) by using the same methods as any other {product-title} cluster. During the update, TNF clusters update one control plane node at a time, and Pacemaker keeps the cluster running on the node that is not being updated. Short API interruptions and temporary cluster Operator conditions are expected and resolve on their own.
+
+For update channels, prerequisites, and the update procedure, see "Introduction to OpenShift updates" and "Updating a cluster using the CLI" or "Updating a cluster using the web console". This section describes only the behavior that is specific to TNF clusters.
 
 [IMPORTANT]
 ====
-Start an upgrade only when both nodes are healthy. Do not start an upgrade while the cluster is degraded. For details, see "Prohibited operations during degraded TNF operation".
+Start an update only when both nodes are healthy. Do not start an update while the cluster is degraded. For details, see "Prohibited operations during degraded TNF operation".
 ====
 
-.Upgrade sequence
+.Update sequence
 
 . The control plane Operators update first. This phase includes a new etcd static pod revision on both nodes, applied without rebooting either node.
 . The Machine Config Operator (MCO) updates the control plane nodes one at a time. The MCO cordons and drains the node, applies the new operating system image, and reboots the node.
@@ -26,7 +28,7 @@ Each node is unavailable for workloads from the time it is cordoned until it is 
 // Clean run on dev-scripts VMs (4.22 -> 5.0.1): ~11-13 min cordon->uncordon per node, ~64 min total.
 // Not stated as numbers: bare-metal reboots and image pulls are slower. Validate on hardware before adding figures.
 
-.Expected conditions during an upgrade
+.Expected conditions during an update
 [cols="2,3,2",options="header"]
 |===
 | Component | Expected behavior | Resolves
@@ -52,12 +54,18 @@ Each node is unavailable for workloads from the time it is cordoned until it is 
 | Within minutes
 
 | Fencing
-| Does not occur during a normal upgrade.
+| Does not occur during a normal update.
 | Not applicable
 |===
 
-// TO MEASURE (fencing-injection run, OCPEDGE-3054): fencing completion time when a node is fenced during the upgrade,
-// whether the upgrade resumes on its own, and dual power-on re-form. Add a paragraph on fencing during an upgrade only
+// TO MEASURE (fencing-injection run, OCPEDGE-3054): fencing completion time when a node is fenced during the update,
+// whether the update resumes on its own, and dual power-on re-form. Add a paragraph on fencing during an update only
 // if the run shows behavior that requires customer action.
 
-If a node stays `NotReady`, or a cluster Operator stays `Degraded`, after the upgrade otherwise completes, gather diagnostic information before you take any recovery action.
+If a node stays `NotReady`, or a cluster Operator stays `Degraded`, after the update otherwise completes, gather diagnostic information before you take any recovery action.
+
+[role="_additional-resources"]
+.Additional resources
+* xref:../../../updating/understanding_updates/intro-to-updates.adoc#understanding-openshift-updates[Introduction to OpenShift updates]
+* xref:../../../updating/updating_a_cluster/updating-cluster-cli.adoc#updating-cluster-cli[Updating a cluster using the CLI]
+* xref:../../../updating/updating_a_cluster/updating-cluster-web-console.adoc#updating-cluster-web-console[Updating a cluster using the web console]
